@@ -1,0 +1,19 @@
+# Ignore object files and executables
+*.o
+*.out
+
+# Ignore compiled C files
+*.exe
+
+# Ignore files generated during build
+/build/
+/bin/
+/.vscode/
+
+# Ignore user-specific files and settings
+/.vscode/
+/.vscode/settings.json
+
+# Ignore system-specific files and directories
+.DS_Store
+Thumbs.db
