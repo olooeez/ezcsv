@@ -1,3 +1,6 @@
+#define _XOPEN_SOURCE 500
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdlib.h>
 #include <string.h>
 #include "ezcsv.h"
@@ -7,14 +10,14 @@ static CSVError last_error;
 CSVParser *csv_parser_create(const char *filename, char delimiter)
 {
     CSVParser *parser = malloc(sizeof(CSVParser));
-    if (!parser)
+    if (parser == NULL)
     {
         last_error = CSV_ERROR_MEMORY;
         return NULL;
     }
 
     parser->file = fopen(filename, "r");
-    if (!parser->file)
+    if (parser->file == NULL)
     {
         free(parser);
         last_error = CSV_ERROR_FILE_OPEN;
@@ -65,7 +68,7 @@ CSVRow *csv_read_row(CSVParser *parser)
 
     char *line = NULL;
     size_t line_length = 0;
-    size_t bytes_read = getline(&line, &line_length, parser->file);
+    ssize_t bytes_read = getline(&line, &line_length, parser->file);
 
     if (bytes_read == -1)
     {
@@ -110,6 +113,55 @@ CSVRow *csv_read_row(CSVParser *parser)
 
     last_error = CSV_SUCCESS;
 
+    return row;
+}
+
+CSVRow *csv_row_create(int field_count, const char **fields)
+{
+    CSVRow *row = malloc(sizeof(CSVRow));
+
+    if (!row)
+    {
+        last_error = CSV_ERROR_MEMORY;
+        return NULL;
+    }
+
+    row->field_count = field_count;
+
+    if (field_count > 0 && fields)
+    {
+        row->fields = malloc(sizeof(char *) * field_count);
+
+        if (!row->fields)
+        {
+            free(row);
+            last_error = CSV_ERROR_MEMORY;
+            return NULL;
+        }
+
+        for (int i = 0; i < field_count; i++)
+        {
+            row->fields[i] = strdup(fields[i]);
+            if (!row->fields[i])
+            {
+                for (int j = 0; j < i; j++)
+                {
+                    free(row->fields[j]);
+                }
+
+                free(row->fields);
+                free(row);
+                last_error = CSV_ERROR_MEMORY;
+                return NULL;
+            }
+        }
+    }
+    else
+    {
+        row->fields = NULL;
+    }
+
+    last_error = CSV_SUCCESS;
     return row;
 }
 
@@ -241,72 +293,6 @@ char *csv_get_field(const CSVRow *row, int field_index)
     last_error = CSV_SUCCESS;
 
     return row->fields[field_index];
-}
-
-char **csv_get_headers(const char *csv_string, char delimiter)
-{
-    if (!csv_string)
-    {
-        last_error = CSV_ERROR_INVALID_ARG;
-
-        return NULL;
-    }
-
-    char *line = strdup(csv_string);
-    if (!line)
-    {
-        last_error = CSV_ERROR_MEMORY;
-
-        return NULL;
-    }
-
-    char *token = strtok(line, &delimiter);
-    int field_count = 0;
-
-    while (token)
-    {
-        token = strtok(NULL, &delimiter);
-        field_count++;
-    }
-
-    char **headers = malloc(sizeof(char *) * field_count);
-    if (!headers)
-    {
-        free(line);
-        last_error = CSV_ERROR_MEMORY;
-
-        return NULL;
-    }
-
-    strcpy(line, csv_string);
-    token = strtok(line, &delimiter);
-
-    for (int i = 0; i < field_count; i++)
-    {
-        headers[i] = strdup(token);
-        if (!headers[i])
-        {
-            for (int j = 0; j < i; j++)
-            {
-                free(headers[j]);
-            }
-
-            free(headers);
-            free(line);
-
-            last_error = CSV_ERROR_MEMORY;
-
-            return NULL;
-        }
-
-        token = strtok(NULL, &delimiter);
-    }
-
-    free(line);
-
-    last_error = CSV_SUCCESS;
-
-    return headers;
 }
 
 void csv_set_delimiter(CSVParser *parser, char new_delimiter)
