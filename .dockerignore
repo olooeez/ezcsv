@@ -1,0 +1,16 @@
+# Exclude build artifacts and temporary files
+_.o
+_.a
+_.so
+_.out
+_.log
+_.swp
+.vscode/
+.idea/
+
+# Exclude version control directories and files
+.git/
+.gitignore
+
+# Exclude test-related files and directories
+tests/
